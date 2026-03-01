@@ -28,8 +28,9 @@ def calculate_rsi(series, period=14):
     return 100 - (100 / (1 + rs))
 
 try:
-    print(f"Fetching VIP data for {SYMBOL}...")
-    data = yf.download(tickers=SYMBOL, period='2d', interval='15m', progress=False)
+    print(f"Fetching 5m VIP data for {SYMBOL}...")
+    # interval='5m' সেট করা হয়েছে
+    data = yf.download(tickers=SYMBOL, period='1d', interval='5m', progress=False)
     
     if data.empty or len(data) < 20:
         sys.exit(0)
@@ -37,32 +38,31 @@ try:
     data['RSI'] = calculate_rsi(data['Close'])
     last_rsi = round(data['RSI'].iloc[-1], 2)
     last_price = round(data['Close'].iloc[-1], 2)
-    current_time = datetime.now().strftime("%H:%M")
     
-    affiliate_link = "আপনার_লিঙ্ক_এখানে_দিন" # <--- আপনার লিঙ্ক দিন
+    affiliate_link = "আপনার_লিঙ্ক_এখানে_দিন" 
 
     # VIP সিগন্যাল টেমপ্লেট
-    header = "💎 **VIP  PREDICTION** 💎\n"
+    header = "💎 **VIP AI PREDICTION (FAST)** 💎\n"
     instrument = f"━━━━━━━━━━━━━━━\n📊 **ASSET:** {SYMBOL}\n"
-    timeframe = "⏰ **TIMEFRAME:** 15 MINUTES\n"
+    timeframe = "⏰ **TIMEFRAME:** 5 MINUTES\n"
     price_info = f"💰 **ENTRY PRICE:** {last_price}\n"
     
-    risk_footer = "\n━━━━━━━━━━━━━━━\n⚠️ *Risk Warning: Binary trading involves risk. Only invest what you can afford to lose.*"
+    risk_footer = "\n━━━━━━━━━━━━━━━\n⚠️ *Risk Warning: High volatility in 5m charts.*"
 
     if last_rsi < 30:
         msg = (f"{header}{instrument}{timeframe}{price_info}"
                f"🚀 **DIRECTION:** CALL (UP) ⬆️\n"
                f"📉 **RSI STRENGTH:** {last_rsi}\n"
-               f"🔥 **ACCURACY:** 92%\n\n"
-               f"👉 [START TRADING NOW]({affiliate_link}){risk_footer}")
+               f"🔥 **ACCURACY:** 88%\n\n"
+               f"👉 [TRADE ON QUOTEX]({affiliate_link}){risk_footer}")
         send_msg(msg)
         
     elif last_rsi > 70:
         msg = (f"{header}{instrument}{timeframe}{price_info}"
                f"📉 **DIRECTION:** PUT (DOWN) ⬇️\n"
                f"📈 **RSI STRENGTH:** {last_rsi}\n"
-               f"🔥 **ACCURACY:** 92%\n\n"
-               f"👉 [START TRADING NOW]({affiliate_link}){risk_footer}")
+               f"🔥 **ACCURACY:** 88%\n\n"
+               f"👉 [TRADE ON QUOTEX]({affiliate_link}){risk_footer}")
         send_msg(msg)
 
 except Exception as e:
