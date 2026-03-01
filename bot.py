@@ -42,7 +42,7 @@ try:
     affiliate_link = "আপনার_লিঙ্ক_এখানে_দিন" # <--- আপনার লিঙ্ক দিন
 
     # VIP সিগন্যাল টেমপ্লেট
-    header = "💎 **VIP AI PREDICTION** 💎\n"
+    header = "💎 **VIP  PREDICTION** 💎\n"
     instrument = f"━━━━━━━━━━━━━━━\n📊 **ASSET:** {SYMBOL}\n"
     timeframe = "⏰ **TIMEFRAME:** 15 MINUTES\n"
     price_info = f"💰 **ENTRY PRICE:** {last_price}\n"
