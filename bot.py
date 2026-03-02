@@ -66,7 +66,7 @@ def bot_loop():
                     print(f"Checking {symbol}: RSI {last_rsi} | Price {last_price}")
 
                     # সিগন্যাল কন্ডিশন (৩০/৭০ লেভেল - শিউর শট সিগন্যাল)
-                    if last_rsi < 30:
+                    if last_rsi < 40:
                         msg = (
                             f"🟢 **QUOTEX CALL (UP) SIGNAL**\n"
                             f"━━━━━━━━━━━━━━━\n"
@@ -82,7 +82,7 @@ def bot_loop():
                         send_msg(msg)
                         time.sleep(300) # ৫ মিনিট বিরতি
                         
-                    elif last_rsi > 70:
+                    elif last_rsi > 50:
                         msg = (
                             f"🔴 **QUOTEX PUT (DOWN) SIGNAL**\n"
                             f"━━━━━━━━━━━━━━━\n"
