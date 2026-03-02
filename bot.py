@@ -6,28 +6,24 @@ import time
 from threading import Thread
 from flask import Flask
 
-# --- ১. Render-এর জন্য ওয়েব সার্ভার (সার্ভার সচল রাখতে) ---
+# --- ১. Render Web Server ---
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "AI Trading Bot is Online and Monitoring Market!"
+    return "USD/BDT Signal Bot is Online!"
 
 def run_flask():
-    # Render অটোমেটিক পোর্ট সেট করে দেয়, না থাকলে 8080 ব্যবহার করবে
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- ২. কনফিগারেশন (আপনার তথ্য এখানে দিন) ---
-# আপনার টেলিগ্রাম বোট টোকেন এবং চ্যানেলের নাম এখানে বসান
+# --- ২. কনফিগারেশন ---
 BOT_TOKEN = "8659871069:AAEgPh6pwmLjB8nfrG1aBOLqsfsaGCUu3Kc"
-CHAT_ID = "@vipsignalsbd03"  # যেমন: @my_signals_channel
-AFFILIATE_LINK = "broker-qx.pro/sign-up/?lid=2022003" # আপনার কোটাক্স লিঙ্ক
-# এসেট লিস্ট (বেশি সিগন্যালের জন্য রিয়েল এসেট ও ক্রিপ্টো)
-SYMBOLS = [
-    'EURUSD=X', 'GBPUSD=X', 'USDJPY=X', 'AUDUSD=X', 
-    'USDCAD=X', 'BTC-USD', 'ETH-USD', 'SOL-USD'
-]
+CHAT_ID = "@vipsignalsbd03" 
+AFFILIATE_LINK = "broker-qx.pro/sign-up/?lid=2022003"
+
+# শুধু USD/BDT এর সিম্বল (Yahoo Finance-এ এটি 'BDT=X')
+SYMBOL = 'BDT=X'
 
 # --- ৩. টেলিগ্রাম মেসেজ ফাংশন ---
 def send_msg(text):
