@@ -51,13 +51,13 @@ def bot_loop():
                     last_rsi = round(float(data['RSI'].iloc[-1]), 2)
                     
                     # সিগন্যাল লজিক (৩০/৭০ এর বদলে ২৫/৭৫ ব্যবহার করছি আরও শিউর শট সিগন্যালের জন্য)
-                    if last_rsi < 25: # Oversold - High probability Buy
+                    if last_rsi < 45: # Oversold - High probability Buy
                         direction = "CALL (UP) ⬆️"
                         msg = f"💎 **VIP WINNING SIGNAL** 💎\n━━━━━━━━━━━━━━━\n📊 **ASSET:** {symbol}\n🚀 **DIRECTION:** {direction}\n💰 **PRICE:** {last_price}\n📉 **RSI:** {last_rsi}\n⏰ **EXPIRY:** 5 MIN\n\n👉 [TRADE ON QUOTEX]({AFFILIATE_LINK})\n━━━━━━━━━━━━━━━"
                         send_msg(msg)
                         time.sleep(300) # একটি সিগন্যাল দিলে ৫ মিনিট বিরতি (ডাবল মেসেজ এড়াতে)
                         
-                    elif last_rsi > 75: # Overbought - High probability Sell
+                    elif last_rsi > 55: # Overbought - High probability Sell
                         direction = "PUT (DOWN) ⬇️"
                         msg = f"💎 **VIP WINNING SIGNAL** 💎\n━━━━━━━━━━━━━━━\n📊 **ASSET:** {symbol}\n📉 **DIRECTION:** {direction}\n💰 **PRICE:** {last_price}\n📈 **RSI:** {last_rsi}\n⏰ **EXPIRY:** 5 MIN\n\n👉 [TRADE ON QUOTEX]({AFFILIATE_LINK})\n━━━━━━━━━━━━━━━"
                         send_msg(msg)
