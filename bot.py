@@ -5,32 +5,31 @@ import requests
 import time
 from threading import Thread
 from flask import Flask
-from datetime import datetime
 
-# --- ১. Render Web Server (To keep bot alive) ---
+# --- ১. Render-এর জন্য ওয়েব সার্ভার (সার্ভার সচল রাখতে) ---
 app = Flask('')
 
 @app.route('/')
 def home():
-    return "Quotex Precision Bot is Live!"
+    return "AI Trading Bot is Online and Monitoring Market!"
 
 def run_flask():
-    # Render uses 'PORT' environment variable
+    # Render অটোমেটিক পোর্ট সেট করে দেয়, না থাকলে 8080 ব্যবহার করবে
     port = int(os.environ.get("PORT", 8080))
     app.run(host='0.0.0.0', port=port)
 
-# --- ২. কনফিগারেশন (এখানে আপনার তথ্য দিন) ---
+# --- ২. কনফিগারেশন (আপনার তথ্য এখানে দিন) ---
+# আপনার টেলিগ্রাম বোট টোকেন এবং চ্যানেলের নাম এখানে বসান
 BOT_TOKEN = "8659871069:AAEgPh6pwmLjB8nfrG1aBOLqsfsaGCUu3Kc"
-CHAT_ID = "@vipsignalsbd03"  # অবশ্যই @ সহ দিন
+CHAT_ID = "@vipsignalsbd03"  # যেমন: @my_signals_channel
 AFFILIATE_LINK = "broker-qx.pro/sign-up/?lid=2022003" # আপনার কোটাক্স লিঙ্ক
-
-# রিয়েল এসেট লিস্ট (Quotex এর সাথে মিলবে)
+# এসেট লিস্ট (বেশি সিগন্যালের জন্য রিয়েল এসেট ও ক্রিপ্টো)
 SYMBOLS = [
     'EURUSD=X', 'GBPUSD=X', 'USDJPY=X', 'AUDUSD=X', 
-    'USDCAD=X', 'EURJPY=X', 'BTC-USD', 'ETH-USD', 'SOL-USD'
+    'USDCAD=X', 'BTC-USD', 'ETH-USD', 'SOL-USD'
 ]
 
-# --- ৩. টেলিগ্রাম ফাংশন ---
+# --- ৩. টেলিগ্রাম মেসেজ ফাংশন ---
 def send_msg(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
     payload = {
@@ -40,7 +39,7 @@ def send_msg(text):
         "disable_web_page_preview": True
     }
     try:
-        requests.post(url, data=payload)
+        requests.post(url, data=payload, timeout=10)
     except Exception as e:
         print(f"Error sending message: {e}")
 
@@ -64,59 +63,57 @@ def bot_loop():
                 if not data.empty and len(data) >= 20:
                     data['RSI'] = calculate_rsi(data['Close'])
                     
-                    # ডাটা ফরম্যাটিং (Clean Price & RSI)
+                    # ডাটা ক্লিনআপ
                     last_price = round(float(data['Close'].iloc[-1]), 5)
                     last_rsi = round(float(data['RSI'].iloc[-1]), 2)
                     
-                    # সিগন্যাল কন্ডিশন (৩০/৭০ লেভেল)
-                    # BUY SIGNAL
+                    print(f"Checking {symbol}: RSI {last_rsi} | Price {last_price}")
+
+                    # সিগন্যাল কন্ডিশন (৩০/৭০ লেভেল - শিউর শট সিগন্যাল)
                     if last_rsi < 30:
                         msg = (
-                            f"🟢 **QUOTEX CALL (UP) SIGNAL** 🟢\n"
-                            f"━━━━━━━━━━━━━━━━━━━━\n"
+                            f"🟢 **QUOTEX CALL (UP) SIGNAL**\n"
+                            f"━━━━━━━━━━━━━━━\n"
                             f"📊 **ASSET:** {symbol}\n"
-                            f"🚀 **DIRECTION:** CALL (UP) ⬆️\n"
+                            f"🚀 **DIRECTION:** CALL ⬆️\n"
                             f"💰 **PRICE:** {last_price}\n"
                             f"📉 **RSI LEVEL:** {last_rsi}\n"
-                            f"⏰ **EXPIRY:** 5 MIN\n"
-                            f"⚠️ **USE 1-STEP MARTINGALE**\n"
-                            f"━━━━━━━━━━━━━━━━━━━━\n"
-                            f"👉 [START TRADING NOW]({AFFILIATE_LINK})"
+                            f"⏰ **TIME:** 5 MIN\n"
+                            f"⚠️ **1-STEP MARTINGALE OK**\n"
+                            f"━━━━━━━━━━━━━━━\n"
+                            f"👉 [TRADE ON QUOTEX]({AFFILIATE_LINK})"
                         )
                         send_msg(msg)
-                        print(f"✅ Signal Sent: {symbol} - BUY")
-                        time.sleep(300) # একটি এসেটে সিগন্যাল দিলে ৫ মিনিট বিরতি
-                    
-                    # SELL SIGNAL
+                        time.sleep(300) # ৫ মিনিট বিরতি
+                        
                     elif last_rsi > 70:
                         msg = (
-                            f"🔴 **QUOTEX PUT (DOWN) SIGNAL** 🔴\n"
-                            f"━━━━━━━━━━━━━━━━━━━━\n"
+                            f"🔴 **QUOTEX PUT (DOWN) SIGNAL**\n"
+                            f"━━━━━━━━━━━━━━━\n"
                             f"📊 **ASSET:** {symbol}\n"
-                            f"📉 **DIRECTION:** PUT (DOWN) ⬇️\n"
+                            f"📉 **DIRECTION:** PUT ⬇️\n"
                             f"💰 **PRICE:** {last_price}\n"
                             f"📈 **RSI LEVEL:** {last_rsi}\n"
-                            f"⏰ **EXPIRY:** 5 MIN\n"
-                            f"⚠️ **USE 1-STEP MARTINGALE**\n"
-                            f"━━━━━━━━━━━━━━━━━━━━\n"
-                            f"👉 [START TRADING NOW]({AFFILIATE_LINK})"
+                            f"⏰ **TIME:** 5 MIN\n"
+                            f"⚠️ **1-STEP MARTINGALE OK**\n"
+                            f"━━━━━━━━━━━━━━━\n"
+                            f"👉 [TRADE ON QUOTEX]({AFFILIATE_LINK})"
                         )
                         send_msg(msg)
-                        print(f"✅ Signal Sent: {symbol} - SELL")
-                        time.sleep(300) # একটি এসেটে সিগন্যাল দিলে ৫ মিনিট বিরতি
+                        time.sleep(300)
 
             except Exception as e:
-                print(f"Error on {symbol}: {e}")
+                print(f"Market Error for {symbol}: {e}")
         
         # প্রতি ৩০ সেকেন্ড পর পর সব এসেট চেক করবে
         time.sleep(30)
 
-# --- ৬. রানার ---
+# --- ৬. মেইন রানার ---
 if __name__ == "__main__":
-    # আলাদা থ্রেডে বোট চালানো
+    # বোটের লুপ আলাদা থ্রেডে চালানো
     t = Thread(target=bot_loop)
     t.daemon = True
     t.start()
     
-    # মেইন থ্রেডে ফ্ল্যাস্ক সার্ভার চালানো
+    # ফ্ল্যাস্ক সার্ভার স্টার্ট
     run_flask()
