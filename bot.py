@@ -5,73 +5,118 @@ import requests
 import time
 from threading import Thread
 from flask import Flask
+from datetime import datetime
 
+# --- ১. Render Web Server (To keep bot alive) ---
 app = Flask('')
+
 @app.route('/')
-def home(): return "Quotex Signal Bot is Live!"
+def home():
+    return "Quotex Precision Bot is Live!"
 
-# --- কনফিগারেশন ---
+def run_flask():
+    # Render uses 'PORT' environment variable
+    port = int(os.environ.get("PORT", 8080))
+    app.run(host='0.0.0.0', port=port)
+
+# --- ২. কনফিগারেশন (এখানে আপনার তথ্য দিন) ---
 BOT_TOKEN = "8659871069:AAEgPh6pwmLjB8nfrG1aBOLqsfsaGCUu3Kc"
-CHAT_ID = "@vipsignalsbd03" 
+CHAT_ID = "@vipsignalsbd03"  # অবশ্যই @ সহ দিন
+AFFILIATE_LINK = "broker-qx.pro/sign-up/?lid=2022003" # আপনার কোটাক্স লিঙ্ক
 
-# Quotex এ যে পেয়ারগুলো বেশি চলে (Real Assets)
+# রিয়েল এসেট লিস্ট (Quotex এর সাথে মিলবে)
 SYMBOLS = [
     'EURUSD=X', 'GBPUSD=X', 'USDJPY=X', 'AUDUSD=X', 
-    'USDCAD=X', 'EURJPY=X', 'BTC-USD', 'ETH-USD'
+    'USDCAD=X', 'EURJPY=X', 'BTC-USD', 'ETH-USD', 'SOL-USD'
 ]
 
+# --- ৩. টেলিগ্রাম ফাংশন ---
 def send_msg(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"}
-    requests.post(url, data=payload)
+    payload = {
+        "chat_id": CHAT_ID, 
+        "text": text, 
+        "parse_mode": "Markdown",
+        "disable_web_page_preview": True
+    }
+    try:
+        requests.post(url, data=payload)
+    except Exception as e:
+        print(f"Error sending message: {e}")
 
-# ইন্ডিকেটর ক্যালকুলেশন
-def calculate_indicators(data):
-    # RSI
-    delta = data['Close'].diff()
-    gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
-    loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+# --- ৪. RSI ক্যালকুলেশন ---
+def calculate_rsi(series, period=14):
+    delta = series.diff()
+    gain = (delta.where(delta > 0, 0)).rolling(window=period).mean()
+    loss = (-delta.where(delta < 0, 0)).rolling(window=period).mean()
     rs = gain / loss
-    data['RSI'] = 100 - (100 / (1 + rs))
-    
-    # EMA (Trend Filter) - এটি কোটাক্স চার্টের সাথে মিলাতে সাহায্য করবে
-    data['EMA_20'] = data['Close'].ewm(span=20, adjust=False).mean()
-    return data
+    return 100 - (100 / (1 + rs))
 
+# --- ৫. মেইন বোট লজিক ---
 def bot_loop():
-    print("🚀 Connecting with Market Data...")
+    print("🚀 Monitoring Market for Quotex Signals...")
     while True:
         for symbol in SYMBOLS:
             try:
-                # ১ মিনিটের ডাটা ফেচিং
+                # ১ মিনিটের ইন্টারভাল ডাটা ফেচিং
                 data = yf.download(tickers=symbol, period='1d', interval='1m', progress=False)
+                
                 if not data.empty and len(data) >= 20:
-                    data = calculate_indicators(data)
+                    data['RSI'] = calculate_rsi(data['Close'])
                     
+                    # ডাটা ফরম্যাটিং (Clean Price & RSI)
                     last_price = round(float(data['Close'].iloc[-1]), 5)
                     last_rsi = round(float(data['RSI'].iloc[-1]), 2)
-                    last_ema = round(float(data['EMA_20'].iloc[-1]), 5)
                     
-                    # --- সিগন্যাল লজিক (RSI + EMA Filter) ---
-                    # BUY: RSI ৩০ এর নিচে এবং প্রাইস EMA এর উপরে যাওয়ার চেষ্টা করছে
+                    # সিগন্যাল কন্ডিশন (৩০/৭০ লেভেল)
+                    # BUY SIGNAL
                     if last_rsi < 30:
-                        msg = f"🟢 **QUOTEX BUY SIGNAL** 🟢\n━━━━━━━━━━━━━━\n📊 Asset: {symbol}\n🚀 Direction: CALL (UP)\n⏰ Time: 5 MIN\n💰 Price: {last_price}\n📉 RSI: {last_rsi}\n⚠️ Use 1-Step Martingale"
+                        msg = (
+                            f"🟢 **QUOTEX CALL (UP) SIGNAL** 🟢\n"
+                            f"━━━━━━━━━━━━━━━━━━━━\n"
+                            f"📊 **ASSET:** {symbol}\n"
+                            f"🚀 **DIRECTION:** CALL (UP) ⬆️\n"
+                            f"💰 **PRICE:** {last_price}\n"
+                            f"📉 **RSI LEVEL:** {last_rsi}\n"
+                            f"⏰ **EXPIRY:** 5 MIN\n"
+                            f"⚠️ **USE 1-STEP MARTINGALE**\n"
+                            f"━━━━━━━━━━━━━━━━━━━━\n"
+                            f"👉 [START TRADING NOW]({AFFILIATE_LINK})"
+                        )
                         send_msg(msg)
-                        time.sleep(300) # ৫ মিনিট ওয়েট
-                        
-                    # SELL: RSI ৭০ এর উপরে এবং প্রাইস EMA এর নিচে যাওয়ার চেষ্টা করছে
+                        print(f"✅ Signal Sent: {symbol} - BUY")
+                        time.sleep(300) # একটি এসেটে সিগন্যাল দিলে ৫ মিনিট বিরতি
+                    
+                    # SELL SIGNAL
                     elif last_rsi > 70:
-                        msg = f"🔴 **QUOTEX SELL SIGNAL** 🔴\n━━━━━━━━━━━━━━\n📊 Asset: {symbol}\n📉 Direction: PUT (DOWN)\n⏰ Time: 5 MIN\n💰 Price: {last_price}\n📈 RSI: {last_rsi}\n⚠️ Use 1-Step Martingale"
+                        msg = (
+                            f"🔴 **QUOTEX PUT (DOWN) SIGNAL** 🔴\n"
+                            f"━━━━━━━━━━━━━━━━━━━━\n"
+                            f"📊 **ASSET:** {symbol}\n"
+                            f"📉 **DIRECTION:** PUT (DOWN) ⬇️\n"
+                            f"💰 **PRICE:** {last_price}\n"
+                            f"📈 **RSI LEVEL:** {last_rsi}\n"
+                            f"⏰ **EXPIRY:** 5 MIN\n"
+                            f"⚠️ **USE 1-STEP MARTINGALE**\n"
+                            f"━━━━━━━━━━━━━━━━━━━━\n"
+                            f"👉 [START TRADING NOW]({AFFILIATE_LINK})"
+                        )
                         send_msg(msg)
-                        time.sleep(300)
+                        print(f"✅ Signal Sent: {symbol} - SELL")
+                        time.sleep(300) # একটি এসেটে সিগন্যাল দিলে ৫ মিনিট বিরতি
 
             except Exception as e:
-                print(f"Error: {e}")
+                print(f"Error on {symbol}: {e}")
         
-        time.sleep(30) # প্রতি ৩০ সেকেন্ড পর পর স্ক্যান
+        # প্রতি ৩০ সেকেন্ড পর পর সব এসেট চেক করবে
+        time.sleep(30)
 
+# --- ৬. রানার ---
 if __name__ == "__main__":
+    # আলাদা থ্রেডে বোট চালানো
     t = Thread(target=bot_loop)
+    t.daemon = True
     t.start()
-    port = int(os.environ.get("PORT", 8080))
-    app.run(host='0.0.0.0', port=port)
+    
+    # মেইন থ্রেডে ফ্ল্যাস্ক সার্ভার চালানো
+    run_flask()
