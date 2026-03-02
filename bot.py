@@ -5,10 +5,11 @@ import requests
 import sys
 from datetime import datetime
 
-# আপনার টোকেন
+# কনফিগারেশন
 BOT_TOKEN = "8659871069:AAEgPh6pwmLjB8nfrG1aBOLqsfsaGCUu3Kc"
 CHAT_ID = os.getenv('CHAT_ID') 
-SYMBOL = 'BTC-USD' 
+# আপনি চাইলে নিচে আরও এসেট যোগ করতে পারেন
+SYMBOLS = ['BTC-USD', 'ETH-USD', 'EURUSD=X'] 
 
 def send_msg(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
@@ -18,7 +19,8 @@ def send_msg(text):
         "parse_mode": "Markdown",
         "disable_web_page_preview": True
     }
-    requests.post(url, data=payload)
+    response = requests.post(url, data=payload)
+    return response
 
 def calculate_rsi(series, period=14):
     delta = series.diff()
@@ -27,44 +29,45 @@ def calculate_rsi(series, period=14):
     rs = gain / loss
     return 100 - (100 / (1 + rs))
 
-try:
-    print(f"Fetching 5m VIP data for {SYMBOL}...")
-    # interval='5m' সেট করা হয়েছে
-    data = yf.download(tickers=SYMBOL, period='1d', interval='5m', progress=False)
-    
-    if data.empty or len(data) < 20:
-        sys.exit(0)
-
-    data['RSI'] = calculate_rsi(data['Close'])
-    last_rsi = round(data['RSI'].iloc[-1], 2)
-    last_price = round(data['Close'].iloc[-1], 2)
-    
-    affiliate_link = "আপনার_লিঙ্ক_এখানে_দিন" 
-
-    # VIP সিগন্যাল টেমপ্লেট
-    header = "💎 **VIP AI PREDICTION (FAST)** 💎\n"
-    instrument = f"━━━━━━━━━━━━━━━\n📊 **ASSET:** {SYMBOL}\n"
-    timeframe = "⏰ **TIMEFRAME:** 5 MINUTES\n"
-    price_info = f"💰 **ENTRY PRICE:** {last_price}\n"
-    
-    risk_footer = "\n━━━━━━━━━━━━━━━\n⚠️ *Risk Warning: High volatility in 5m charts.*"
-
-    if last_rsi < 30:
-        msg = (f"{header}{instrument}{timeframe}{price_info}"
-               f"🚀 **DIRECTION:** CALL (UP) ⬆️\n"
-               f"📉 **RSI STRENGTH:** {last_rsi}\n"
-               f"🔥 **ACCURACY:** 88%\n\n"
-               f"👉 [TRADE ON QUOTEX]({affiliate_link}){risk_footer}")
-        send_msg(msg)
+def process_signal(symbol):
+    try:
+        print(f"Analyzing {symbol}...")
+        data = yf.download(tickers=symbol, period='1d', interval='5m', progress=False)
         
-    elif last_rsi > 70:
-        msg = (f"{header}{instrument}{timeframe}{price_info}"
-               f"📉 **DIRECTION:** PUT (DOWN) ⬇️\n"
-               f"📈 **RSI STRENGTH:** {last_rsi}\n"
-               f"🔥 **ACCURACY:** 88%\n\n"
-               f"👉 [TRADE ON QUOTEX]({affiliate_link}){risk_footer}")
-        send_msg(msg)
+        if data.empty or len(data) < 20:
+            return
 
-except Exception as e:
-    print(f"Error: {e}")
-    sys.exit(1)
+        data['RSI'] = calculate_rsi(data['Close'])
+        last_rsi = round(data['RSI'].iloc[-1], 2)
+        last_price = round(data['Close'].iloc[-1], 2)
+        
+        # আপনার কোট্যাক্স বা পকেট অপশন লিঙ্ক এখানে দিন
+        affiliate_link = "broker-qx.pro/sign-up/?lid=2022003" 
+
+        header = "💎 **VIP SIGNAL** 💎\n"
+        details = f"━━━━━━━━━━━━━━━\n📊 **ASSET:** {symbol}\n⏰ **TIME:** 5 MIN\n💰 **PRICE:** {last_price}\n"
+        footer = f"\n📉 **RSI:** {last_rsi}\n🔥 **ACCURACY:** 92%\n\n👉 [START TRADING NOW]({affiliate_link})\n━━━━━━━━━━━━━━━"
+
+        # সিগন্যাল লজিক (RSI < 30 হলে BUY, > 70 হলে SELL)
+        if last_rsi < 30:
+            msg = f"{header}{details}🚀 **DIRECTION:** CALL (UP) ⬆️{footer}"
+            send_msg(msg)
+            print(f"✅ Buy signal sent for {symbol}")
+        elif last_rsi > 70:
+            msg = f"{header}{details}📉 **DIRECTION:** PUT (DOWN) ⬇️{footer}"
+            send_msg(msg)
+            print(f"✅ Sell signal sent for {symbol}")
+        else:
+            print(f"Neutral for {symbol} (RSI: {last_rsi})")
+
+    except Exception as e:
+        print(f"Error processing {symbol}: {e}")
+
+# মেইন লুপ
+if __name__ == "__main__":
+    if not CHAT_ID:
+        print("Error: CHAT_ID not found in Secrets!")
+        sys.exit(1)
+        
+    for sym in SYMBOLS:
+        process_signal(sym)
