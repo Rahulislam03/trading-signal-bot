@@ -1,8 +1,8 @@
 name: Trading Bot Automation
 on:
   schedule:
-    - cron: '*/15 * * * *'
-  workflow_dispatch:
+    - cron: '*/5 * * * *' # প্রতি ৫ মিনিট পর পর চেক করবে
+  workflow_dispatch: # ম্যানুয়ালি রান করার জন্য
 jobs:
   run-bot:
     runs-on: ubuntu-latest
@@ -19,8 +19,6 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install yfinance requests pandas numpy
-          # pandas-ta ইনস্টলেশন এরর এড়াতে অন্যভাবে ট্রাই করছি
-          pip install pandas_ta --no-dependencies || echo "Silent fail, manual handling in script"
 
       - name: Run Bot
         env:
