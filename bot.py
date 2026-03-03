@@ -3,21 +3,21 @@ import time
 import requests
 from flask import Flask
 from threading import Thread
-from tradingview_ta import TA_Handler, Interval, Exchange
+from tradingview_ta import TA_Handler, Interval
 
 app = Flask(__name__)
 
 @app.route('/')
 def home():
-    return "<h1>TradingView Analysis Bot is Online!</h1>"
+    return "<h1>VIP Bot: Real Market Analysis Live</h1>"
 
 # --- ১. কনফিগারেশন ---
 BOT_TOKEN = "8659871069:AAEgPh6pwmLjB8nfrG1aBOLqsfsaGCUu3Kc"
 CHAT_ID = "@vipsignalsbd03"
 AFFILIATE_LINK = "https://broker-qx.pro/sign-up/?lid=2022003"
 
-# TradingView এর জন্য পেয়ার লিস্ট
-SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'BTCUSD', 'ETHUSD']
+# রিয়েল মার্কেট এসেট লিস্ট (এগুলো Quotex এর Real চার্টের সাথে মিলবে)
+SYMBOLS = ['EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 'GBPCHF']
 
 # --- ২. টেলিগ্রাম ফাংশন ---
 def send_msg(text):
@@ -28,62 +28,46 @@ def send_msg(text):
     except:
         pass
 
-# --- ৩. TradingView অ্যানালাইসিস লজিক ---
-def get_tv_signal(symbol):
+# --- ৩. TradingView অ্যানালাইসিস (৫ মিনিট টাইমফ্রেম) ---
+def get_analysis(symbol):
     try:
         handler = TA_Handler(
             symbol=symbol,
-            exchange="FX_IDC", # ফরেক্সের জন্য IDC এক্সচেঞ্জ সবচেয়ে ভালো
+            exchange="FX_IDC", 
             screener="forex",
-            interval=Interval.INTERVAL_5_MINUTES, # ৫ মিনিটের ক্যান্ডেল অ্যানালাইসিস
+            interval=Interval.INTERVAL_5_MINUTES, # আপনার চার্টের ৫ মিনিটের সাথে মিলবে
             timeout=10
         )
-        analysis = handler.get_analysis()
-        return analysis.summary['RECOMMENDATION']
-    except Exception as e:
-        print(f"Error fetching TV data for {symbol}: {e}")
+        return handler.get_analysis().summary['RECOMMENDATION']
+    except:
         return None
 
-# --- ৪. মেইন বোট লুপ ---
+# --- ৪. মেইন লুপ ---
 def bot_loop():
-    send_msg("🚀 **TradingView Analysis Mode Active!**\nএখন সরাসরি TradingView সার্ভার থেকে সিগন্যাল আসবে।")
+    send_msg("📡 **Real Market Scanner Active!**\nচ্যানেলে এখন থেকে শুধুমাত্র Real Assets (Non-OTC) সিগন্যাল আসবে।\n**Timeframe:** 5 Minutes")
     
     while True:
         for symbol in SYMBOLS:
-            recommendation = get_tv_signal(symbol)
-            print(f"🔍 {symbol}: {recommendation}")
+            rec = get_analysis(symbol)
+            
+            if rec and ("STRONG" in rec): # শুধুমাত্র স্ট্রং সিগন্যাল পাঠাবে
+                direction = "CALL ⬆️" if "BUY" in rec else "PUT ⬇️"
+                emoji = "🟢" if "BUY" in rec else "🔴"
+                
+                msg = (
+                    f"{emoji} **VIP {direction} SIGNAL**\n"
+                    f"━━━━━━━━━━━━━━━\n"
+                    f"📊 **ASSET:** {symbol} (Real)\n"
+                    f"⏰ **TIMEFRAME:** 5 MIN\n"
+                    f"⚡ **STRATEGY:** TradingView AI\n"
+                    f"🎯 **RECO:** {rec}\n"
+                    f"━━━━━━━━━━━━━━━\n"
+                    f"👉 [TRADE ON REAL CHART]({AFFILIATE_LINK})"
+                )
+                send_msg(msg)
+                time.sleep(300) # একটি পেয়ারে সিগন্যাল দিলে ৫ মিনিট বিরতি
 
-            if recommendation:
-                # সিগন্যাল কন্ডিশন
-                if "STRONG_BUY" in recommendation or "BUY" in recommendation:
-                    msg = (
-                        f"🟢 **VIP CALL (UP) SIGNAL**\n"
-                        f"━━━━━━━━━━━━━━━\n"
-                        f"📊 **ASSET:** {symbol}\n"
-                        f"🚀 **DIRECTION:** CALL ⬆️\n"
-                        f"⚡ **STRENGTH:** {recommendation}\n"
-                        f"⏰ **TIME:** 5 MIN\n"
-                        f"━━━━━━━━━━━━━━━\n"
-                        f"👉 [TRADE ON QUOTEX]({AFFILIATE_LINK})"
-                    )
-                    send_msg(msg)
-                    time.sleep(10) # স্প্যাম প্রোটেকশন
-
-                elif "STRONG_SELL" in recommendation or "SELL" in recommendation:
-                    msg = (
-                        f"🔴 **VIP PUT (DOWN) SIGNAL**\n"
-                        f"━━━━━━━━━━━━━━━\n"
-                        f"📊 **ASSET:** {symbol}\n"
-                        f"📉 **DIRECTION:** PUT ⬇️\n"
-                        f"⚡ **STRENGTH:** {recommendation}\n"
-                        f"⏰ **TIME:** 5 MIN\n"
-                        f"━━━━━━━━━━━━━━━\n"
-                        f"👉 [TRADE ON QUOTEX]({AFFILIATE_LINK})"
-                    )
-                    send_msg(msg)
-                    time.sleep(10)
-
-        time.sleep(60) # প্রতি ১ মিনিট পর পর সব পেয়ার আবার চেক করবে
+        time.sleep(60)
 
 if __name__ == "__main__":
     t = Thread(target=bot_loop)
