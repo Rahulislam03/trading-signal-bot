@@ -1,6 +1,5 @@
 flask
 gunicorn
-yfinance
-pandas
 requests
-tradingview-ta
+python-dotenv
+quotexapi
