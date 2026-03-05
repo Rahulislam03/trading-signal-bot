@@ -1,55 +1,86 @@
 import os
 import time
+import requests
 from flask import Flask
 from threading import Thread
-import requests
-# লাইব্রেরি ইমপোর্ট করার সময় ট্রাই-ক্যাচ ব্যবহার করছি যাতে এরর হ্যান্ডেল করা যায়
-try:
-    from quotexapi.stable_api import Quotex
-except ImportError:
-    Quotex = None
+from tradingview_ta import TA_Handler, Interval
 
 app = Flask(__name__)
 
-# --- কনফিগারেশন ---
+# --- ১. কনফিগারেশন ---
 BOT_TOKEN = "8659871069:AAEgPh6pwmLjB8nfrG1aBOLqsfsaGCUu3Kc"
 CHAT_ID = "@vipsignalsbd03"
-EMAIL = "hmia9878@gmail.com"
-PASSWORD = "RRahul@2002"
+AFFILIATE_LINK = "https://broker-qx.pro/sign-up/?lid=2022003"
+
+# এসেট লিস্ট বাড়ানো হয়েছে যাতে সিগন্যাল বেশি আসে
+SYMBOLS = [
+    'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 
+    'EURJPY', 'GBPJPY', 'NZDUSD', 'EURGBP', 'AUDJPY'
+]
 
 def send_msg(text):
     url = f"https://api.telegram.org/bot{BOT_TOKEN}/sendMessage"
-    payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown"}
-    requests.post(url, data=payload)
+    payload = {"chat_id": CHAT_ID, "text": text, "parse_mode": "Markdown", "disable_web_page_preview": True}
+    try:
+        requests.post(url, data=payload, timeout=10)
+    except:
+        pass
 
+# --- ২. ডাটা অ্যানালাইসিস (১ মিনিট টাইমফ্রেম) ---
+def get_signal(symbol):
+    try:
+        handler = TA_Handler(
+            symbol=symbol,
+            exchange="FX_IDC",
+            screener="forex",
+            interval=Interval.INTERVAL_1_MINUTE, 
+            timeout=10
+        )
+        # এখানে summary থেকে সরাসরি রিকমেন্ডেশন নেওয়া হচ্ছে
+        analysis = handler.get_analysis().summary['RECOMMENDATION']
+        return analysis
+    except:
+        return None
+
+# --- ৩. মেইন লুপ ---
 def bot_loop():
-    if Quotex is None:
-        print("API Library not found!")
-        return
-
-    # Quotex কানেকশন
-    client = Quotex(email=EMAIL, password=PASSWORD)
-    check, reason = client.connect()
+    send_msg("🔥 **Fast Signal Mode Activated!**\nএখন থেকে ঘনঘন সিগন্যাল পাঠানো হবে। প্রস্তুত থাকুন!")
     
-    if check:
-        send_msg("✅ **Quotex API Connected Successfully!**\nসরাসরি ব্রোকার ডাটা থেকে সিগন্যাল আসছে।")
-        
-        while True:
-            # USD/BDT (OTC) বা অন্য যেকোনো এসেট
-            asset = "USD/BDT_otc" 
-            candles = client.get_candles(asset, 60) # ১ মিনিটের ডাটা
+    # লাস্ট সিগন্যাল ট্র্যাক করার জন্য ডিকশনারি (যাতে একই পেয়ারে বারবার মেসেজ না যায়)
+    last_sent = {symbol: "" for symbol in SYMBOLS}
+
+    while True:
+        for symbol in SYMBOLS:
+            rec = get_signal(symbol)
             
-            if candles:
-                last = candles[-1]
-                # আপনার সিগন্যাল লজিক এখানে (যেমন RSI বা Candle Pattern)
-                # ... 
-            time.sleep(10)
-    else:
-        print(f"Connection Error: {reason}")
+            # শর্ত শিথিল করা হয়েছে: BUY বা SELL থাকলেই সিগন্যাল যাবে
+            if rec and ("BUY" in rec or "SELL" in rec):
+                
+                # একই সিগন্যাল বারবার পাঠানো বন্ধ করতে চেক
+                if last_sent[symbol] != rec:
+                    direction = "CALL ⬆️" if "BUY" in rec else "PUT ⬇️"
+                    emoji = "🟢" if "BUY" in rec else "🔴"
+                    
+                    msg = (
+                        f"{emoji} **QUOTEX SIGNAL**\n"
+                        f"━━━━━━━━━━━━━━━\n"
+                        f"📊 **ASSET:** {symbol}\n"
+                        f"🚀 **DIRECTION:** {direction}\n"
+                        f"⏰ **EXPIRY:** 1 MIN\n"
+                        f"⚡ **STRENGTH:** {rec}\n"
+                        f"━━━━━━━━━━━━━━━\n"
+                        f"👉 [TRADE NOW]({AFFILIATE_LINK})"
+                    )
+                    send_msg(msg)
+                    last_sent[symbol] = rec
+                    time.sleep(2) # মেসেজের মাঝে গ্যাপ
+
+        # চেক করার বিরতি কমিয়ে ১০ সেকেন্ড করা হয়েছে
+        time.sleep(10)
 
 @app.route('/')
 def home():
-    return "API Bot is Running"
+    return "High Frequency Bot is Running"
 
 if __name__ == "__main__":
     t = Thread(target=bot_loop)
