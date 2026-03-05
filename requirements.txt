@@ -1,5 +1,4 @@
 flask
 gunicorn
 requests
-python-dotenv
-git+https://github.com/A11ksa/API-Quotex.git
+tradingview-ta
