@@ -7,12 +7,12 @@ from tradingview_ta import TA_Handler, Interval
 
 app = Flask(__name__)
 
-# --- কনফিগারেশন ---
+# --- ১. কনফিগারেশন ---
 BOT_TOKEN = "8659871069:AAEgPh6pwmLjB8nfrG1aBOLqsfsaGCUu3Kc"
 CHAT_ID = "@vipsignalsbd03"
 AFFILIATE_LINK = "https://broker-qx.pro/sign-up/?lid=2022003"
 
-# Quotex এ সবচাইতে বেশি ট্রেড হওয়া পেয়ারগুলো
+# এসেট লিস্ট
 SYMBOLS = [
     'EURUSD', 'GBPUSD', 'USDJPY', 'AUDUSD', 'USDCAD', 
     'EURJPY', 'GBPJPY', 'NZDUSD', 'EURGBP'
@@ -26,69 +26,54 @@ def send_msg(text):
     except:
         pass
 
-# --- ৩. Quotex এর সাথে ডাটা সিঙ্ক করার ফাংশন ---
-def get_exact_signal(symbol):
+# --- ২. ডাটা অ্যানালাইসিস ---
+def get_signal(symbol):
     try:
-        # Quotex সাধারণত FX_IDC বা OANDA থেকে ডাটা নেয়
-        # আমরা সরাসরি FX_IDC ব্যবহার করছি যা একদম Real-time
         handler = TA_Handler(
             symbol=symbol,
-            exchange="FX_IDC", 
+            exchange="FX_IDC",
             screener="forex",
             interval=Interval.INTERVAL_1_MINUTE, 
-            timeout=7
+            timeout=5
         )
-        analysis = handler.get_analysis()
-        
-        # ডিটেইলড ডাটা সংগ্রহ
-        recommendation = analysis.summary['RECOMMENDATION']
-        rsi = analysis.indicators['RSI']
-        
-        return recommendation, round(rsi, 2)
+        analysis = handler.get_analysis().summary['RECOMMENDATION']
+        return analysis
     except:
-        return None, None
+        return None
 
-# --- ৪. মেইন লুপ (একদম Fast এবং নির্ভুল) ---
+# --- ৩. মেইন লুপ (প্রতি ক্যান্ডেলে সিগন্যাল দেওয়ার জন্য) ---
 def bot_loop():
-    send_msg("🎯 **Quotex Sync Mode: ON**\nএখন থেকে চার্টের সাথে হুবহু মিল রেখে সিগন্যাল আসবে।")
+    send_msg("🔥 **Every Candle Signal Mode: ON**\nএখন প্রতিটি ক্যান্ডেলের মুভমেন্ট অনুযায়ী সিগন্যাল আসবে।")
     
-    last_sent_time = {symbol: 0 for symbol in SYMBOLS}
-
     while True:
         for symbol in SYMBOLS:
-            current_time = time.time()
-            # একই পেয়ারে অন্তত ২ মিনিট পর পর সিগন্যাল দেবে যাতে স্প্যাম না হয়
-            if current_time - last_sent_time[symbol] < 120:
-                continue
-
-            rec, rsi_val = get_exact_signal(symbol)
+            rec = get_signal(symbol)
             
-            # সিগন্যাল কন্ডিশন (BUY/SELL থাকলেই হবে)
+            # শর্ত আরও শিথিল করা হয়েছে (BUY/SELL/STRONG যেকোনো একটা হলেই সিগন্যাল যাবে)
             if rec and ("BUY" in rec or "SELL" in rec):
                 direction = "CALL ⬆️" if "BUY" in rec else "PUT ⬇️"
                 emoji = "🟢" if "BUY" in rec else "🔴"
                 
-                # ক্যান্ডেল স্টিক চার্ট এবং ইন্ডিকেটরের মিল চেক
                 msg = (
-                    f"{emoji} **QUOTEX LIVE SIGNAL**\n"
+                    f"{emoji} **QUOTEX LIVE**\n"
                     f"━━━━━━━━━━━━━━━\n"
-                    f"📊 **ASSET:** {symbol}/FIXED\n"
+                    f"📊 **ASSET:** {symbol}\n"
                     f"🚀 **DIRECTION:** {direction}\n"
                     f"⏰ **EXPIRY:** 1 MIN\n"
-                    f"📈 **RSI VALUE:** {rsi_val}\n"
-                    f"🎯 **RECO:** {rec}\n"
+                    f"🔥 **STATUS:** {rec}\n"
                     f"━━━━━━━━━━━━━━━\n"
-                    f"👉 [TRADE ON QUOTEX]({AFFILIATE_LINK})"
+                    f"👉 [TRADE NOW]({AFFILIATE_LINK})"
                 )
                 send_msg(msg)
-                last_sent_time[symbol] = current_time
-                time.sleep(2) # ছোট বিরতি
+                # মেসেজ পাঠানোর পর খুব সামান্য বিরতি (০.৫ সেকেন্ড) যাতে টেলিগ্রাম ব্লক না করে
+                time.sleep(0.5) 
 
-        time.sleep(5) # ৫ সেকেন্ড পর পর নতুন ডাটা চেক
+        # এক রাউন্ড শেষ করে মাত্র ৫ সেকেন্ড অপেক্ষা করবে পরবর্তী স্ক্যানের জন্য
+        time.sleep(5)
 
 @app.route('/')
 def home():
-    return "Quotex Direct Sync Bot is Active"
+    return "Every Candle Bot is Active"
 
 if __name__ == "__main__":
     t = Thread(target=bot_loop)
